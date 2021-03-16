@@ -1,0 +1,164 @@
+---
+title: "Intelligent timeseries predictor"
+author: "Anton Ehret"
+output: html_document
+---
+```{r setup, include=FALSE}
+#' @Setup
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = normalizePath("~/Desktop/datensets"))
+
+    library(forecast)
+    library(stats)
+    library(datasets)
+    library(readxl)
+    library(dplyr)
+    library(plyr)
+    library(ARDL) #for ADL analysis
+    library(vars) #for VAR analysis
+    library(tseries) #for ADF test
+    library(lmtest) #for bp and dw test
+    library(car) #for vif
+    library(rio) #for changing xls into csv
+    library(readr) #Fast csv write
+```
+Orange = Frontend input
+Purple = Backend only
+<h2>1. Upload of data by user</h2>
+The Dataset has to be uploaded and meet the conditions of the first col being the dat and the 2nd col being the variable of interest. 
+```{r data prep, include=FALSE}
+#' *Name of dataset*
+#Can this potentially be retreived automatically from the name of the uploaded dataset?
+set <- "ARSales(1).xlsx"
+#What do we do if we have a certain sheet that we are interested in?
+# sheet <- "Datensatz1"
+
+#' @load
+  data.xlsx <- read_excel(set
+                          # ,sheet = sheet
+                          )
+
+#' change into @csv for further manipulation and sorting
+  data <- write_csv(data.xlsx, path="data.csv")
+  
+#' @rename first column for sorting
+  colnames(data)[1] <- "Date"
+  data$Date <- as.Date(data$Date, "%Y%m%d", optional = F) #turning char into date
+
+#' @sort for dates in case data is sorted differently
+  arrange(data, Date)
+```
+
+<h2>Input into Mask</h2>
+```{r Mask}
+#' *Variable of interest*
+var <- data$Sales
+
+#' *Split in %*
+split <- 80
+
+#' *Frequency`*
+freq <- 12
+
+#' *Start (Year)*
+year <- 1998
+
+#' *forecast period*
+forc <- 12
+```
+<h2>Calculations are run in the background</h2>
+A best model is chosen based on the lowest RMSE obtained. The models are trained on a training dataset and the accuracy is assessed in a test dataset.
+The models which are trained are:
+<ol>
+<li> centered moving average </li>
+<li> HoltWinters with different seasonal components</li>
+<li> Autoregressive integrated Moving Average (ARIMA)</li>
+</ol>
+```{r ts and splitting data, message=FALSE, warning=FALSE, include=FALSE}
+#' @ts variable of interest
+  df <- ts(var
+         , start = c(year, 01)  #' we start in year @2020
+         , frequency = freq
+         )
+
+#'@splitting
+  insamp <- ts(var[1:(length(var)*(split/100))]
+               , start = c(year, 01)  #' we start in year @2020
+               , frequency = freq
+               )
+  outsamp <- var[(length(var)*(split/100)) : length(var)]
+```
+```{r automatic Modelselection, message=FALSE, warning=FALSE, include=FALSE}
+#' @models
+#' Setting up
+  h <- length(outsamp) #for forecasting period
+  l <- list() #for models
+  f <- list() #for forecasts
+  a <- list() #for accuracy
+#' Running models
+  #Models
+  l[[1]] <- ma(insamp
+               , order = freq
+               , centre = TRUE
+               )
+  l[[2]] <- ma(insamp
+               , order = freq*2
+               , centre = TRUE
+               )
+  l[[3]] <- HoltWinters(insamp)
+  l[[4]] <- HoltWinters(insamp
+                        , seasonal = "multiplicative"
+                        )
+  l[[5]] <- auto.arima(insamp)
+  #Forecast & accuracy
+  for (i in seq(1:5)){
+    f[[i]] <- forecast(l[[i]]
+                       , h = h
+                       )
+    a[[i]] <- accuracy(f[[i]]
+                       , outsamp
+                       )
+  }
+
+#' @model assessment
+  #setting up sequence to only get the test-dataset assessment
+  test <- seq(2,length(a)*2,2)
+  #putting all accuraciy() in a dataframe
+  assessment <- ldply(a,data.frame)[test,]
+  #Modelselection based on RMSE
+  chosen.model <- which.min(assessment$RMSE)
+  
+  if (chosen.model == 1) {
+      mod <- ma(df, order = freq, centre = TRUE)
+      message <- "Smallest RMSE was obtained by using centered moving average taking averages of one season"
+    } else if (chosen.model == 2) {
+      mod <- ma(df, order = freq*2, centre = TRUE)
+      message <- "Smallest RMSE was obtained by using centered moving average taking averages of two seasons" 
+    } else if (chosen.model == 3) {
+      mod <- HoltWinters(df)
+      message <- "Smallest RMSE was obtained by using HoltWinters with additive seasonal component"
+    } else if (chosen.model == 4) {
+      mod <- HoltWinters(df, seasonal = "multiplicative")
+      message <- "Smallest RMSE was obtained by using HoltWinters with multiplicative seasonal component"
+    } else {
+      mod <- Arima(df, model=l[[5]])
+      message <- "Smallest RMSE was obtained by using auto.arima"
+    }
+  
+#' @Forecasting
+    #' Forecast
+    forecast <- forecast(mod, h = forc)
+```
+<h2>Forecast</h2>
+```{r results, echo=FALSE}
+#' *Displays in the frontend*
+  #Message about which model was chosen
+  print(message)
+  #Forcasted plot
+  plot(forecast, 
+       main = "Forecast based on automatic selection of best Model")
+   abline(v = year + length(df)/freq,
+    col = "red")
+    grid(col = "grey")
+  forecast$model
+```
