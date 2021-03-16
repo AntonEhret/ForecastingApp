@@ -15,7 +15,7 @@ function(input, output){
                     , start = c(input$year, 01)
                     , frequency = input$freq)
     options(scipen=999)
-    ts.plot(yourData)
+    plot(as.matrix(yourData))
   })
   output$plot1 <- renderPlot(plot1())
 
@@ -80,8 +80,8 @@ function(input, output){
   })
   output$ModelSelection1 <- renderText(ModelSelect1())
   
-  # ModelSelect2 <- eventReactive(input$calc1start, {
-  #   assessment
-  # })
-  # output$ModelSelection2 <- renderDataTable(ModelSelect2())
+  ModelSelect2 <- eventReactive(input$calc1start, {
+    assessment
+  })
+  output$ModelSelection2 <- renderDataTable(ModelSelect2())
 }
