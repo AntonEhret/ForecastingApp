@@ -1,6 +1,7 @@
 # ForecastingApp
 Hi there :)
-in this repo, you can find my work on a forecasting app for automated timeseries forecasting.
+
+In this repo, you can find my work on a forecasting app for automated timeseries forecasting.
 I was in my business forecasting class, thinking that the used functions should be relatively easily automated.
 So I started coding an RMD, where you only need to put in the data and a little bit of information, such as the frequency, the start year of your data and the forecasting period.
 The algorithm itself will then run 5 different models (different MA, different Holt.Winters and ARIMA) and establish the best fit based on test RMSE.
