@@ -23,7 +23,7 @@ dashboardPage(
         menuItem(text = "2. Information abougt Data",
                            statExpanded = FALSE,
                            menuSubItem(
-                             selectInput("split", "Percentage of dataset used training", choices = c(50,60,70,80,90), selected = 80),
+                             selectInput("split", "Percentage of dataset used for training", choices = c(50,60,70,80,90), selected = 80),
                              icon = NULL),
                            menuSubItem(
                              numericInput("year", "In what year does your Dataset start?", value = 2000),
@@ -64,7 +64,7 @@ dashboardPage(
         tabPanel("Your Data", 
                  DTOutput("data")),
         tabPanel("Your Timeseries", 
-                 plotOutput("plot1")),
+                 plotOutput("plot")),
         tabPanel("Your Model", 
                  textOutput("ModelSelection1"))
                  # textOutput("ModelSelection2"))

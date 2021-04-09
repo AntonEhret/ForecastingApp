@@ -12,4 +12,3 @@ library(vars) #for VAR analysis
 library(tseries) #for ADF test
 library(lmtest) #for bp and dw test
 library(car) #for vif
-
